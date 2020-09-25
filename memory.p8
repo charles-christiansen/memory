@@ -11,36 +11,120 @@ function _init()
 		deli(possibles,idx)
 	end
 	selected = 1
+	chosen={}
+	matched={}
 	time = 0
+	frame = 0
+	startdrawn = false
+	pnboxx = -40
+	pnboxy = 40
+	pnboxw = 35
+	pnboxh = 8
+	pnboxdestx = 50
+	pnboxdx = 0
+	pnboxv = false
+	boxmoving = false
+	mode="game"
+	mcheck=false
 end
 
 function _update60()
+	if #matched == 16 then
+		update_finish()
+	else
+		update_game()
+	end
+end
+
+function update_game()
+	if #chosen == 2 and not mcheck then
+		checkmatch()
+	end
+	frame += 1
+	if frame == 60 then
+		frame = 0
+		time += 1
+	end
 	if btnp(0) then
 		selected -= 1
 		if selected < 1 then
 			selected = 16
+		end
+		while count(matched,selected) > 0 do
+			selected -= 1
+			if selected < 1 then
+				selected = 16
+			end
 		end
 	elseif btnp(1) then
 		selected += 1
 		if selected > 16 then
 			selected = 1
 		end
+		while count(matched,selected) > 0 do
+			selected += 1
+			if selected > 16 then
+				selected = 1
+			end
+		end
 	elseif btnp(2) then
 		selected -= 4
 		if selected < 1 then
 			selected += 16
+		end
+		while count(matched,selected) > 0 do
+			selected -= 1
+			if selected < 1 then
+				selected = 16
+			end
 		end
 	elseif btnp(3) then
 		selected += 4
 		if selected > 16 then
 			selected -= 16
 		end
+		while count(matched,selected) > 0 do
+			selected += 1
+			if selected > 16 then
+				selected = 1
+			end
+		end
 	elseif btnp(5) then
-		flipcard(selected)
+		if #chosen == 2 then
+			chosen = {}
+			mcheck = false
+		end
+		add(chosen,selected)
+	elseif btnp(4) and not boxmoving then
+		boxmoving = true
+	end
+	if boxmoving then
+		movebox()
+	end
+end
+
+function update_finish()
+	mode = "win"
+	if btnp(5) then
+		_init()
 	end
 end
 
 function _draw()
+	if mode == "win" then
+		draw_finish()
+	else
+		draw_game()
+	end
+end
+
+function draw_finish()
+	cls()
+	print("all tiles matched! win time: "..time.."s",1,61,7)
+	print("press ❎ to play again!",20,71,7)
+end
+
+function draw_game()
 	cls()
 	palt(14,true)
 	palt(0,false)
@@ -54,15 +138,24 @@ function _draw()
 	line(64,0,64,127,7)
 	line(96,0,96,127,7)
 	line(127,0,127,127,7)
-	idx=1
-	for i=1,97,32 do
-		for j=1,97,32 do
-			sspr(0,64,31,31,i,j)
-			--sspr(tiles[idx].x,tiles[idx].y,31,31,i,j)
-			idx += 1
+	if not startdrawn then
+		idx=1
+		for i=1,97,32 do
+			for j=1,97,32 do
+				tiles[idx].drawx = j
+				tiles[idx].drawy = i
+				sspr(0,64,31,31,j,i)
+				idx += 1
+			end
 		end
 	end
-	-- line (x0,y0*,x1,y1*,c)
+	for m=1,#matched do
+		sspr(tiles[matched[m]].x,tiles[matched[m]].y,31,31,tiles[matched[m]].drawx,tiles[matched[m]].drawy)
+	end
+	for c=1,#chosen do
+		sspr(tiles[chosen[c]].x,tiles[chosen[c]].y,31,31,tiles[chosen[c]].drawx,tiles[chosen[c]].drawy)
+	end
+
 	xoffset = (selected%4)-1
 	if xoffset < 0 then
 		xoffset = 3
@@ -71,9 +164,43 @@ function _draw()
 	line(xoffset*32,flr(selected*31/127)*32,(xoffset*32)+31,flr(selected*31/127)*32,8)
 	line(xoffset*32,(flr(selected*31/127)*32)+31,(xoffset*32)+31,(flr(selected*31/127)*32)+31,8)
 	line((xoffset*32)+31,flr(selected*31/127)*32,(xoffset*32)+31,(flr(selected*31/127)*32)+31,8)
+	rectfill(pnboxx,pnboxy,pnboxx+pnboxw,pnboxy+pnboxh,0)
+	line(pnboxx,pnboxy,pnboxx,pnboxy+pnboxh,7)
+	line(pnboxx+pnboxw,pnboxy,pnboxx+pnboxw,pnboxy+pnboxh,7)
+	line(pnboxx,pnboxy,pnboxx+pnboxw,pnboxy,7)
+	line(pnboxx,pnboxy+pnboxh,pnboxx+pnboxw,pnboxy+pnboxh,7)
+	print("time: "..time,pnboxx+2,pnboxy+2,7)
 end
 
-function flipcard(_sel)
+function movebox()
+	if pnboxv then
+		pnboxdx = -1.5
+		pnboxdestx = -40
+		pnboxx += pnboxdx
+		if pnboxx < pnboxdestx then
+			pnboxx = pnboxdestx
+			pnboxv = false
+			boxmoving = false
+		end
+	else
+		pnboxdx = 1.5
+		pnboxx += pnboxdx
+		if pnboxx > pnboxdestx then
+			pnboxx = pnboxdestx
+			pnboxv = true
+			boxmoving = false
+		end
+	end
+end
+
+function checkmatch()
+	tile1 = tiles[chosen[1]]
+	tile2 = tiles[chosen[2]]
+	if tile1.x == tile2.x and tile1.y == tile2.y then
+		add(matched,chosen[1])
+		add(matched,chosen[2])
+	end
+	mcheck = true
 end
 __gfx__
 ccccccccccccccccccccccccccccccccbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb22222222222222222222222222222222ffffffffffffffffffffffffffffffff
