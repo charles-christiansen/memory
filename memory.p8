@@ -1,8 +1,9 @@
 pico-8 cartridge // http://www.pico-8.com
 version 29
 __lua__
+--memory
+--by 2bitchuck
 function _init()
-	-- randomize sprites by flag
 	tiles={}
 	possibles={{x=0,y=0},{x=0,y=0},{x=32,y=0},{x=32,y=0},{x=64,y=0},{x=64,y=0},{x=96,y=0},{x=96,y=0},{x=0,y=32},{x=0,y=32},{x=32,y=32},{x=32,y=32},{x=64,y=32},{x=64,y=32},{x=96,y=32},{x=96,y=32}}
 	for i=1,16 do
@@ -15,24 +16,56 @@ function _init()
 	matched={}
 	time = 0
 	frame = 0
+	stframe = 0
+	rndtileidx = flr(rnd(16))+1
+	rndtile = tiles[rndtileidx]
+	rndy = flr(rnd(96))
+	while rndy > 18 and rndy < 68 do
+		rndy = flr(rnd(96))
+	end
+	rndx = flr(rnd(96))
 	startdrawn = false
 	pnboxx = -40
 	pnboxy = 40
-	pnboxw = 35
+	pnboxw = 39
 	pnboxh = 8
 	pnboxdestx = 50
 	pnboxdx = 0
 	pnboxv = false
 	boxmoving = false
-	mode="game"
+	if mode != "win" then
+		music(1)
+	end
+	mode="start"
 	mcheck=false
+	lastmatch={}
 end
 
 function _update60()
 	if #matched == 16 then
 		update_finish()
-	else
+	elseif mode == "game" then
 		update_game()
+	else
+		update_start()
+	end
+end
+
+function update_start()
+	stframe += 1
+	if stframe >= 120 then
+		rndtileidx = flr(rnd(16))+1
+		rndtile = tiles[rndtileidx]
+		rndy = flr(rnd(96))
+		while rndy > 18 and rndy < 68 do
+			rndy = flr(rnd(96))
+		end
+		rndx = flr(rnd(96))
+		stframe = 0
+	end
+	if btnp(5) then
+		music(-1,250)
+		mode="game"
 	end
 end
 
@@ -50,46 +83,22 @@ function update_game()
 		if selected < 1 then
 			selected = 16
 		end
-		while count(matched,selected) > 0 do
-			selected -= 1
-			if selected < 1 then
-				selected = 16
-			end
-		end
 	elseif btnp(1) then
 		selected += 1
 		if selected > 16 then
 			selected = 1
-		end
-		while count(matched,selected) > 0 do
-			selected += 1
-			if selected > 16 then
-				selected = 1
-			end
 		end
 	elseif btnp(2) then
 		selected -= 4
 		if selected < 1 then
 			selected += 16
 		end
-		while count(matched,selected) > 0 do
-			selected -= 1
-			if selected < 1 then
-				selected = 16
-			end
-		end
 	elseif btnp(3) then
 		selected += 4
 		if selected > 16 then
 			selected -= 16
 		end
-		while count(matched,selected) > 0 do
-			selected += 1
-			if selected > 16 then
-				selected = 1
-			end
-		end
-	elseif btnp(5) then
+	elseif btnp(5) and count(matched,selected) == 0 and not (count(chosen,selected) == 1 and #chosen == 1) then
 		if #chosen == 2 then
 			chosen = {}
 			mcheck = false
@@ -104,24 +113,49 @@ function update_game()
 end
 
 function update_finish()
+	if mode != "win" then
+		music(1)
+	end
 	mode = "win"
 	if btnp(5) then
+		music(-1,250)
 		_init()
+		mode="game"
 	end
 end
 
 function _draw()
 	if mode == "win" then
 		draw_finish()
-	else
+	elseif mode == "game" then
 		draw_game()
+	else
+		draw_start()
 	end
+end
+
+function draw_start()
+	cls()
+	sspr(rndtile.x,rndtile.y,32,32,rndx,rndy)
+	bx0=38
+	by0=50
+	bx1=95
+	by1=66
+	rectfill(bx0,by0,bx1,by1,0)
+	line(bx0,by0,bx0,by1,7)
+	line(bx1,by0,bx1,by1,7)
+	line(bx0,by0,bx1,by0,7)
+	line(bx0,by1,bx1,by1,7)
+	print("memory",56,53,7)
+	print("press ❎ ",53,59,11)
 end
 
 function draw_finish()
 	cls()
-	print("all tiles matched! win time: "..time.."s",1,61,7)
-	print("press ❎ to play again!",20,71,7)
+	sspr(lastmatch.x,lastmatch.y,32,32,48,24)
+	print("all tiles matched!",29,62,7)
+	print("win time: "..time.."s",39,72,10)
+	print("press ❎ to play again!",20,82,11)
 end
 
 function draw_game()
@@ -199,6 +233,8 @@ function checkmatch()
 	if tile1.x == tile2.x and tile1.y == tile2.y then
 		add(matched,chosen[1])
 		add(matched,chosen[2])
+		lastmatch = tile1
+		sfx(0)
 	end
 	mcheck = true
 end
@@ -299,3 +335,14 @@ ffffffffffffffffffffffffffffffff333333333333333333333333333333331111111111111111
 55666666666666666666666666666655000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 55555555555555555555555555555555000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 55555555555555555555555555555555000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+__sfx__
+010600001205212052330533305333052330523305200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+011400000c6500c6500c6000c6000c6500c6500c6000c6000c6500c6500c6000c6000c6500c6500c6000c6000c6500c6500c6000c6000c6500c6500c6000c6000c6500c6500c6000c6000c6500c6500060000600
+011400002455228552295520050228552245522955200502295522455228552005022955228552245520050228552295522455200502245522955228552000002955224552285520050229552285522455200000
+011400001c5521d5521855218502185521d5521c55218502185521c5521d552185021c552185521d552185021d552185521c552185021d5521c5521855200502185521c5521d552185021c500185001d50000000
+011400000050224552285522955200502285522455229552005022955224552285520050229552285522455200502285522955224552005022455229552285520000000000000000000000000000000000000000
+01140000005021c5521d5521855218502185521d5521c55218502185521c5521d552185021c552185521d552185021d552185521c552185021d5521c5521855200502185521c5521d552185021c5001850000000
+__music__
+00 41424344
+03 01420305
+
